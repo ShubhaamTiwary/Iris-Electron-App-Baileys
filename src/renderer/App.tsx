@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import NSLogo from '../../assets/NSLogo.svg';
 import './App.css';
 
 function WhatsAppAuth() {
@@ -36,34 +37,72 @@ function WhatsAppAuth() {
     };
   }, []);
 
-  if (status === 'open') {
-    return (
-      <div className="Hello">
-        <h1>Logged In</h1>
-        <p>You are successfully connected to WhatsApp!</p>
-      </div>
-    );
-  }
+  const getStatusDisplay = () => {
+    switch (status) {
+      case 'open':
+        return {
+          text: 'Connected',
+          className: 'status-connected',
+          message: 'You are successfully connected to WhatsApp!',
+        };
+      case 'close':
+        return {
+          text: 'Disconnected',
+          className: 'status-disconnected',
+          message: 'Please scan the QR code to connect.',
+        };
+      default:
+        return {
+          text: 'Connecting',
+          className: 'status-connecting',
+          message: 'Please wait while we connect to WhatsApp.',
+        };
+    }
+  };
 
-  if (qrCode) {
-    return (
-      <div className="Hello">
-        <h1>Scan QR Code</h1>
-        <p>Open WhatsApp on your phone and scan this QR code:</p>
-        <div style={{ margin: '20px 0' }}>
-          <QRCodeSVG value={qrCode} size={256} />
-        </div>
-        <p style={{ fontSize: '14px', color: '#666' }}>
-          Waiting for authentication...
-        </p>
-      </div>
-    );
-  }
+  const statusInfo = getStatusDisplay();
 
   return (
-    <div className="Hello">
-      <h1>Connecting...</h1>
-      <p>Please wait while we connect to WhatsApp.</p>
+    <div className="app-container">
+      <header className="app-header">
+        <div className="header-content">
+          <div className="logo-container">
+            <img src={NSLogo} alt="Newton School" className="ns-logo" />
+          </div>
+          <h1 className="app-title">Iris</h1>
+          <p className="app-subtitle">Your WhatsApp helper</p>
+        </div>
+      </header>
+
+      <main className="app-main">
+        <div className="status-section">
+          <div className={`status-badge ${statusInfo.className}`}>
+            <span className="status-dot" />
+            <span className="status-text">{statusInfo.text}</span>
+          </div>
+          <p className="status-message">{statusInfo.message}</p>
+        </div>
+
+        {qrCode && status !== 'open' && (
+          <div className="qr-section">
+            <div className="qr-container">
+              <QRCodeSVG value={qrCode} size={320} level="H" />
+            </div>
+            <p className="qr-instruction">
+              Open WhatsApp on your phone and scan this QR code
+            </p>
+          </div>
+        )}
+
+        {status === 'open' && (
+          <div className="success-section">
+            <div className="success-icon">✓</div>
+            <p className="success-message">
+              You are successfully connected to WhatsApp!
+            </p>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
