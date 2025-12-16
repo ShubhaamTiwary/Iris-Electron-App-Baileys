@@ -105,11 +105,22 @@ const createWindow = async () => {
     return path.join(RESOURCES_PATH, ...paths);
   };
 
+  // Use platform-specific icon
+  const getIconPath = (): string => {
+    if (process.platform === 'win32') {
+      return getAssetPath('icon.ico');
+    }
+    if (process.platform === 'darwin') {
+      return getAssetPath('icon.icns');
+    }
+    return getAssetPath('icon.png');
+  };
+
   mainWindow = new BrowserWindow({
     show: false,
     width: 1024,
     height: 728,
-    icon: getAssetPath('icon.png'),
+    icon: getIconPath(),
     webPreferences: {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
