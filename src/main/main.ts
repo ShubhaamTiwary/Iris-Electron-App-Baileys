@@ -263,8 +263,27 @@ function parseDeeplink(url: string): string | null {
 function handleDeeplink(url: string) {
   const extractedOpenLink = parseDeeplink(url);
   if (extractedOpenLink) {
+    // Ensure window exists - create if needed
+    if (!mainWindow) {
+      createWindow();
+    } else {
+      // Show and focus the existing window
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
+
+    // Store previous openLink to detect changes
+    const previousOpenLink = openLink;
     openLink = extractedOpenLink;
     console.log('Received openLink from deeplink:', openLink);
+
+    // Reset navigation flag when openLink changes
+    if (previousOpenLink !== openLink) {
+      hasNavigatedToOpenLink = false;
+    }
 
     // Notify renderer about openLink update
     if (mainWindow) {
@@ -288,11 +307,11 @@ function handleDeeplink(url: string) {
         if (mainWindow) {
           mainWindow.webContents.send('whatsapp-status-update', status);
 
-          // Navigate to openLink when connected
-          if (status === 'open' && openLink && !hasNavigatedToOpenLink) {
-            hasNavigatedToOpenLink = true;
+          // Navigate to openLink when connected (always navigate if openLink exists)
+          if (status === 'open' && openLink) {
             console.log('Navigating to openLink:', openLink);
             mainWindow.loadURL(openLink);
+            hasNavigatedToOpenLink = true;
           }
 
           // Navigate back to local QR screen when disconnected
@@ -302,6 +321,18 @@ function handleDeeplink(url: string) {
           }
         }
       });
+    } else {
+      // WhatsApp service already exists - check if already connected
+      const currentStatus = whatsappService.getStatus();
+      if (currentStatus === 'open' && openLink && mainWindow) {
+        // Immediately navigate to the new openLink if already connected
+        console.log(
+          'WhatsApp already connected, navigating to new openLink:',
+          openLink,
+        );
+        mainWindow.loadURL(openLink);
+        hasNavigatedToOpenLink = true;
+      }
     }
   }
 }
