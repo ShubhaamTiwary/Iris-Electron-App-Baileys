@@ -345,42 +345,70 @@ if (app.isPackaged && !app.isDefaultProtocolClient('iris')) {
   app.setAsDefaultProtocolClient('iris');
 }
 
-// Handle deeplink on macOS (when app is already running)
-app.on('open-url', (event, url) => {
-  event.preventDefault();
-  handleDeeplink(url);
-});
+// Request single instance lock to prevent multiple windows on Windows/Linux
+// On macOS, this is handled automatically by the system
+const gotTheLock = app.requestSingleInstanceLock();
 
-/**
- * Add event listeners...
- */
+if (!gotTheLock) {
+  // Another instance is already running, quit this one
+  app.quit();
+} else {
+  // Handle deeplink on macOS (when app is already running)
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    handleDeeplink(url);
+  });
 
-app.on('window-all-closed', () => {
-  // Respect the OSX convention of having the application in memory even
-  // after all windows have been closed
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  // Handle deeplink on Windows/Linux (when app is already running)
+  // This event is emitted when a second instance is launched with a deeplink
+  app.on('second-instance', (_event, commandLine) => {
+    // Focus the existing window
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
 
-app
-  .whenReady()
-  .then(() => {
-    createWindow();
-
-    // Check for deeplink on all platforms (when app is launched via deeplink)
-    const deeplinkUrl = process.argv.find((arg) => arg.startsWith('iris://'));
+    // Extract deeplink URL from command line arguments
+    const deeplinkUrl = commandLine.find((arg) => arg.startsWith('iris://'));
     if (deeplinkUrl) {
       handleDeeplink(deeplinkUrl);
     }
+  });
 
-    app.on('activate', () => {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
-      if (mainWindow === null) createWindow();
-    });
-  })
-  .catch(console.log);
+  /**
+   * Add event listeners...
+   */
+
+  app.on('window-all-closed', () => {
+    // Respect the OSX convention of having the application in memory even
+    // after all windows have been closed
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app
+    .whenReady()
+    .then(() => {
+      createWindow();
+
+      // Check for deeplink on all platforms (when app is launched via deeplink)
+      const deeplinkUrl = process.argv.find((arg) => arg.startsWith('iris://'));
+      if (deeplinkUrl) {
+        handleDeeplink(deeplinkUrl);
+      }
+
+      app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (mainWindow === null) createWindow();
+      });
+    })
+    .catch(console.log);
+}
 
 app.on('before-quit', async () => {
   if (whatsappService) {
