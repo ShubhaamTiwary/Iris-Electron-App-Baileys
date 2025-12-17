@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import { CheckCircle2, Loader2, XCircle, Smartphone } from 'lucide-react';
 import NSLogo from '../../assets/NSLogo.svg';
 import './App.css';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from './components/ui/card';
+import { Badge } from './components/ui/badge';
 
 function WhatsAppAuth() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('close');
-  const [openLink, setOpenLink] = useState<string | null>(null);
   const [hasOpenLink, setHasOpenLink] = useState<boolean>(false);
 
   useEffect(() => {
@@ -15,7 +22,6 @@ function WhatsAppAuth() {
     const loadInitialData = async () => {
       const initialOpenLink = await window.electron.openLink.getOpenLink();
       if (initialOpenLink) {
-        setOpenLink(initialOpenLink);
         setHasOpenLink(true);
 
         // Load WhatsApp data if we have openLink
@@ -32,7 +38,6 @@ function WhatsAppAuth() {
     const unsubscribeOpenLink = window.electron.openLink.onOpenLinkUpdate(
       async (newOpenLink) => {
         if (newOpenLink) {
-          setOpenLink(newOpenLink);
           setHasOpenLink(true);
 
           // Load WhatsApp data when openLink is received
@@ -68,19 +73,22 @@ function WhatsAppAuth() {
       case 'open':
         return {
           text: 'Connected',
-          className: 'status-connected',
+          variant: 'success' as const,
+          icon: <CheckCircle2 className="w-4 h-4 mr-1" />,
           message: 'You are successfully connected to WhatsApp!',
         };
       case 'close':
         return {
           text: 'Disconnected',
-          className: 'status-disconnected',
+          variant: 'destructive' as const,
+          icon: <XCircle className="w-4 h-4 mr-1" />,
           message: 'Please scan the QR code to connect.',
         };
       default:
         return {
           text: 'Connecting',
-          className: 'status-connecting',
+          variant: 'warning' as const,
+          icon: <Loader2 className="w-4 h-4 mr-1 animate-spin" />,
           message: 'Please wait while we connect to WhatsApp.',
         };
     }
@@ -88,70 +96,93 @@ function WhatsAppAuth() {
 
   const statusInfo = getStatusDisplay();
 
-  // Show "Launch from LSQ" message if openLink is not yet received
-  if (!hasOpenLink) {
-    return (
-      <div className="app-container">
-        <header className="app-header">
-          <div className="header-content">
-            <div className="logo-container">
-              <img src={NSLogo} alt="Newton School" className="ns-logo" />
-            </div>
-            <h1 className="app-title">Iris</h1>
-            <p className="app-subtitle">Your WhatsApp helper</p>
-          </div>
-        </header>
-
-        <main className="app-main">
-          <div className="lsq-message-section">
-            <p className="lsq-message">Launch from LSQ</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <div className="header-content">
-          <div className="logo-container">
-            <img src={NSLogo} alt="Newton School" className="ns-logo" />
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        {/* Header Section */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center p-3 bg-white rounded-2xl shadow-sm mb-4">
+            <img src={NSLogo} alt="Newton School" className="w-10 h-10" />
           </div>
-          <h1 className="app-title">Iris</h1>
-          <p className="app-subtitle">Your WhatsApp helper</p>
-        </div>
-      </header>
-
-      <main className="app-main">
-        <div className="status-section">
-          <div className={`status-badge ${statusInfo.className}`}>
-            <span className="status-dot" />
-            <span className="status-text">{statusInfo.text}</span>
-          </div>
-          <p className="status-message">{statusInfo.message}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            Iris
+          </h1>
+          <p className="text-slate-500">Your WhatsApp helper</p>
         </div>
 
-        {qrCode && status !== 'open' && (
-          <div className="qr-section">
-            <div className="qr-container">
-              <QRCodeSVG value={qrCode} size={320} level="H" />
-            </div>
-            <p className="qr-instruction">
-              Open WhatsApp on your phone and scan this QR code
-            </p>
-          </div>
-        )}
+        {/* Main Content Card */}
+        <Card className="border-slate-200 shadow-xl">
+          {!hasOpenLink ? (
+            <CardContent className="pt-6 pb-8 text-center space-y-4">
+              <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <Smartphone className="w-8 h-8 text-slate-400" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-700">
+                Launch from LSQ
+              </h2>
+              <p className="text-slate-500 max-w-xs mx-auto">
+                Please launch the application from your LSQ dashboard to
+                continue.
+              </p>
+            </CardContent>
+          ) : (
+            <>
+              <CardHeader className="text-center pb-2">
+                <div className="flex justify-center mb-2">
+                  <Badge variant={statusInfo.variant} className="px-3 py-1">
+                    {statusInfo.icon}
+                    {statusInfo.text}
+                  </Badge>
+                </div>
+                <CardDescription className="text-base">
+                  {statusInfo.message}
+                </CardDescription>
+              </CardHeader>
 
-        {status === 'open' && (
-          <div className="success-section">
-            <div className="success-icon">✓</div>
-            <p className="success-message">
-              You are successfully connected to WhatsApp!
-            </p>
-          </div>
-        )}
-      </main>
+              <CardContent className="flex flex-col items-center justify-center py-6">
+                {status === 'open' ? (
+                  <div className="text-center space-y-4 py-8">
+                    <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in duration-300">
+                      <CheckCircle2 className="w-10 h-10" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-slate-900">Ready to use</p>
+                      <p className="text-sm text-slate-500">
+                        Iris is now active and syncing messages.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  qrCode && (
+                    <div className="space-y-6 w-full flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="p-4 bg-white rounded-xl border-2 border-slate-100 shadow-sm">
+                        <QRCodeSVG
+                          value={qrCode}
+                          size={240}
+                          level="H"
+                          className="rounded-lg"
+                        />
+                      </div>
+                      <div className="flex items-start gap-3 text-sm text-slate-500 bg-slate-50 p-4 rounded-lg w-full max-w-xs">
+                        <Smartphone className="w-5 h-5 mt-0.5 shrink-0" />
+                        <p>
+                          Open WhatsApp on your phone, go to{' '}
+                          <strong>Settings {'>'} Linked Devices</strong>, and
+                          scan the code.
+                        </p>
+                      </div>
+                    </div>
+                  )
+                )}
+              </CardContent>
+            </>
+          )}
+        </Card>
+
+        <p className="text-center text-xs text-slate-400">
+          Powered by Newton School
+        </p>
+      </div>
     </div>
   );
 }
