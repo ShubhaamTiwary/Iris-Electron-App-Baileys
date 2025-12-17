@@ -6,7 +6,8 @@ export type Channels =
   | 'ipc-example'
   | 'whatsapp-qr-update'
   | 'whatsapp-status-update'
-  | 'whatsapp-send-message';
+  | 'whatsapp-send-message'
+  | 'openlink-update';
 
 const electronHandler = {
   ipcRenderer: {
@@ -60,6 +61,22 @@ const electronHandler = {
 
       return () => {
         ipcRenderer.removeListener('whatsapp-status-update', subscription);
+      };
+    },
+  },
+  openLink: {
+    async getOpenLink(): Promise<string | null> {
+      return ipcRenderer.invoke('get-openlink');
+    },
+    onOpenLinkUpdate(func: (openLink: string | null) => void) {
+      const subscription = (
+        _event: IpcRendererEvent,
+        openLink: string | null,
+      ) => func(openLink);
+      ipcRenderer.on('openlink-update', subscription);
+
+      return () => {
+        ipcRenderer.removeListener('openlink-update', subscription);
       };
     },
   },

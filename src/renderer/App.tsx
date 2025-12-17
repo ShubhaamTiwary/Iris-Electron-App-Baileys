@@ -7,19 +7,44 @@ import './App.css';
 function WhatsAppAuth() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('close');
+  const [openLink, setOpenLink] = useState<string | null>(null);
+  const [hasOpenLink, setHasOpenLink] = useState<boolean>(false);
 
   useEffect(() => {
-    // Get initial QR and status
+    // Get initial openLink
     const loadInitialData = async () => {
-      const initialQR = await window.electron.whatsapp.getQR();
-      const initialStatus = await window.electron.whatsapp.getStatus();
-      setQrCode(initialQR);
-      setStatus(initialStatus);
+      const initialOpenLink = await window.electron.openLink.getOpenLink();
+      if (initialOpenLink) {
+        setOpenLink(initialOpenLink);
+        setHasOpenLink(true);
+
+        // Load WhatsApp data if we have openLink
+        const initialQR = await window.electron.whatsapp.getQR();
+        const initialStatus = await window.electron.whatsapp.getStatus();
+        setQrCode(initialQR);
+        setStatus(initialStatus);
+      }
     };
 
     loadInitialData();
 
-    // Set up listeners for updates
+    // Set up listener for openLink updates
+    const unsubscribeOpenLink = window.electron.openLink.onOpenLinkUpdate(
+      async (newOpenLink) => {
+        if (newOpenLink) {
+          setOpenLink(newOpenLink);
+          setHasOpenLink(true);
+
+          // Load WhatsApp data when openLink is received
+          const initialQR = await window.electron.whatsapp.getQR();
+          const initialStatus = await window.electron.whatsapp.getStatus();
+          setQrCode(initialQR);
+          setStatus(initialStatus);
+        }
+      },
+    );
+
+    // Set up listeners for WhatsApp updates
     const unsubscribeQR = window.electron.whatsapp.onQRUpdate((qr) => {
       setQrCode(qr);
     });
@@ -32,6 +57,7 @@ function WhatsAppAuth() {
 
     // Cleanup listeners on unmount
     return () => {
+      unsubscribeOpenLink();
       unsubscribeQR();
       unsubscribeStatus();
     };
@@ -61,6 +87,29 @@ function WhatsAppAuth() {
   };
 
   const statusInfo = getStatusDisplay();
+
+  // Show "Launch from LSQ" message if openLink is not yet received
+  if (!hasOpenLink) {
+    return (
+      <div className="app-container">
+        <header className="app-header">
+          <div className="header-content">
+            <div className="logo-container">
+              <img src={NSLogo} alt="Newton School" className="ns-logo" />
+            </div>
+            <h1 className="app-title">Iris</h1>
+            <p className="app-subtitle">Your WhatsApp helper</p>
+          </div>
+        </header>
+
+        <main className="app-main">
+          <div className="lsq-message-section">
+            <p className="lsq-message">Launch from LSQ</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">

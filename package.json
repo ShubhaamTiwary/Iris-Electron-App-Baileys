@@ -53,7 +53,7 @@
     "test": "jest"
   },
   "browserslist": [
-    "extends browserslist-config-erb"
+    "Chrome >= 142"
   ],
   "prettier": {
     "singleQuote": true,
@@ -138,7 +138,7 @@
     "css-loader": "^7.1.2",
     "css-minimizer-webpack-plugin": "^7.0.2",
     "detect-port": "^2.1.0",
-    "electron": "^35.0.2",
+    "electron": "39.0.0",
     "electron-builder": "^25.1.8",
     "electron-devtools-installer": "^4.0.0",
     "electronmon": "^2.0.3",
@@ -223,7 +223,9 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico"
@@ -241,6 +243,14 @@
     },
     "extraResources": [
       "./assets/**"
+    ],
+    "protocols": [
+      {
+        "name": "iris",
+        "schemes": [
+          "iris"
+        ]
+      }
     ]
   },
   "devEngines": {
