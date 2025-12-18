@@ -340,11 +340,6 @@ function handleDeeplink(url: string) {
 /**
  * Register protocol handler and set up deeplink handling
  */
-// Register protocol handler (only in production, dev mode uses electron-builder)
-if (app.isPackaged && !app.isDefaultProtocolClient('iris')) {
-  app.setAsDefaultProtocolClient('iris');
-}
-
 // Request single instance lock to prevent multiple windows on Windows/Linux
 // On macOS, this is handled automatically by the system
 const gotTheLock = app.requestSingleInstanceLock();
@@ -393,6 +388,12 @@ if (!gotTheLock) {
   app
     .whenReady()
     .then(() => {
+      // Register protocol handler (only in production, dev mode uses electron-builder)
+      // On Linux, this works in conjunction with the desktop entry MimeType
+      if (app.isPackaged && !app.isDefaultProtocolClient('iris')) {
+        app.setAsDefaultProtocolClient('iris');
+      }
+
       createWindow();
 
       // Check for deeplink on all platforms (when app is launched via deeplink)
