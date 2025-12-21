@@ -18,7 +18,7 @@ export interface WhatsAppStatus {
 export interface SendMessageParams {
   phone: string;
   message: string;
-  image?: {
+  document?: {
     data: string; // base64 string
     mimeType: string;
     filename: string;
@@ -200,28 +200,42 @@ class WhatsAppService extends EventEmitter {
         ? phoneNumber
         : `${phoneNumber}@s.whatsapp.net`;
 
-      // Handle image message
-      if (params.image) {
+      // Handle document (image or PDF)
+      if (params.document) {
         try {
           // Convert base64 to Buffer
-          const imageBuffer = Buffer.from(params.image.data, 'base64');
+          const documentBuffer = Buffer.from(params.document.data, 'base64');
+          const mimeType = params.document.mimeType.toLowerCase();
 
-          // Send image with optional caption
-          await this.socket.sendMessage(jid, {
-            image: imageBuffer,
-            caption: params.message || undefined,
-            mimetype: params.image.mimeType,
-          });
+          // Check if it's an image type
+          const isImage = mimeType.startsWith('image/');
+
+          if (isImage) {
+            // Send image with optional caption
+            await this.socket.sendMessage(jid, {
+              image: documentBuffer,
+              caption: params.message || undefined,
+              mimetype: params.document.mimeType,
+            });
+          } else {
+            // Send as document (PDF or other file types)
+            await this.socket.sendMessage(jid, {
+              document: documentBuffer,
+              mimetype: params.document.mimeType,
+              fileName: params.document.filename,
+              caption: params.message || undefined,
+            });
+          }
 
           return { success: true };
         } catch (error) {
-          console.error('Error sending image message:', error);
+          console.error('Error sending document:', error);
           return {
             success: false,
             error:
               error instanceof Error
                 ? error.message
-                : 'Failed to send image message.',
+                : 'Failed to send document.',
           };
         }
       }

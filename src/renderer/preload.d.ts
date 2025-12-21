@@ -8,7 +8,7 @@ declare global {
       sendMessage(params: {
         phone: string;
         message: string;
-        image?: {
+        document?: {
           data: string;
           mimeType: string;
           filename: string;
