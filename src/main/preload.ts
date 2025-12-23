@@ -34,6 +34,12 @@ const electronHandler = {
     async getStatus(): Promise<string> {
       return ipcRenderer.invoke('whatsapp-get-status');
     },
+    async getPhoneNumber(): Promise<string | null> {
+      return ipcRenderer.invoke('whatsapp-get-phone-number');
+    },
+    async logout(): Promise<{ success: boolean; error?: string }> {
+      return ipcRenderer.invoke('whatsapp-logout');
+    },
     async sendMessage(params: {
       phone: string;
       message: string;
@@ -89,6 +95,10 @@ contextBridge.exposeInMainWorld('irisElectron', {
   sendMessage: electronHandler.whatsapp.sendMessage.bind(
     electronHandler.whatsapp,
   ),
+  getPhoneNumber: electronHandler.whatsapp.getPhoneNumber.bind(
+    electronHandler.whatsapp,
+  ),
+  logout: electronHandler.whatsapp.logout.bind(electronHandler.whatsapp),
 });
 
 export type ElectronHandler = typeof electronHandler;

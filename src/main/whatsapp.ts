@@ -36,6 +36,7 @@ class WhatsAppService extends EventEmitter {
   private currentStatus: ConnectionState = 'close';
   private authDir: string;
   private isInitializing: boolean = false;
+  private phoneNumber: string | null = null;
 
   constructor() {
     super();
@@ -126,6 +127,7 @@ class WhatsAppService extends EventEmitter {
 
           // Clear current QR and update status
           this.currentQR = null;
+          this.phoneNumber = null; // Clear phone number on disconnect
           this.emit('qr-update', null);
           this.currentStatus = 'close';
           this.emit('status-update', this.currentStatus);
@@ -149,6 +151,35 @@ class WhatsAppService extends EventEmitter {
         } else if (connection === 'open') {
           console.log('Connected to WhatsApp');
           this.currentStatus = 'open';
+
+          // Extract and store phone number when connected
+          try {
+            const userJid = this.socket?.user?.id || this.socket?.user?.jid;
+            if (userJid) {
+              // Extract JID part (before @s.whatsapp.net)
+              const jidPart = userJid.split('@')[0];
+
+              if (jidPart) {
+                // Remove device identifier (everything after :)
+                const withoutDeviceId = jidPart.split(':')[0];
+
+                // Remove country code (91 for India) - check if starts with 91
+                let phoneNumber = withoutDeviceId;
+                if (
+                  withoutDeviceId.startsWith('91') &&
+                  withoutDeviceId.length > 10
+                ) {
+                  phoneNumber = withoutDeviceId.substring(2);
+                }
+
+                this.phoneNumber = phoneNumber;
+                console.log('Phone number extracted:', this.phoneNumber);
+              }
+            }
+          } catch (error) {
+            console.error('Error extracting phone number:', error);
+          }
+
           this.emit('status-update', this.currentStatus);
           this.isInitializing = false;
         }
@@ -167,6 +198,48 @@ class WhatsAppService extends EventEmitter {
 
   getStatus(): ConnectionState {
     return this.currentStatus;
+  }
+
+  getPhoneNumber(): string | null {
+    try {
+      // Return stored phone number if available
+      if (this.phoneNumber) {
+        return this.phoneNumber;
+      }
+
+      // Fallback: Try to get from socket if connected
+      if (this.socket && this.currentStatus === 'open') {
+        const userJid = this.socket.user?.id || this.socket.user?.jid;
+        if (userJid) {
+          // Extract JID part (before @s.whatsapp.net)
+          const jidPart = userJid.split('@')[0];
+
+          if (jidPart) {
+            // Remove device identifier (everything after :)
+            const withoutDeviceId = jidPart.split(':')[0];
+
+            // Remove country code (91 for India) - check if starts with 91
+            let phoneNumber = withoutDeviceId;
+            if (
+              withoutDeviceId.startsWith('91') &&
+              withoutDeviceId.length > 10
+            ) {
+              phoneNumber = withoutDeviceId.substring(2);
+            }
+
+            if (phoneNumber) {
+              this.phoneNumber = phoneNumber; // Cache it
+              return phoneNumber;
+            }
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error getting phone number:', error);
+      return null;
+    }
   }
 
   async sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
@@ -278,6 +351,48 @@ class WhatsAppService extends EventEmitter {
     if (this.socket) {
       await this.socket.end(undefined);
       this.socket = null;
+    }
+  }
+
+  async logout(): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('Logging out WhatsApp session...');
+
+      // Clear auth state first to force logout
+      await this.clearAuthState();
+
+      // Disconnect the socket
+      if (this.socket) {
+        await this.socket.end(undefined);
+        this.socket = null;
+      }
+
+      // Clear cached data
+      this.currentQR = null;
+      this.phoneNumber = null;
+      this.currentStatus = 'close';
+      this.isInitializing = false;
+
+      // Emit status updates
+      this.emit('qr-update', null);
+      this.emit('status-update', this.currentStatus);
+
+      // Reinitialize to show new QR code
+      console.log('Reinitializing after logout...');
+      setTimeout(() => {
+        this.initialize();
+      }, 1000);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error during logout:', error);
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred during logout.',
+      };
     }
   }
 }

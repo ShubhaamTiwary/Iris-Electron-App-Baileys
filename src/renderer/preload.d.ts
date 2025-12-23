@@ -14,6 +14,8 @@ declare global {
           filename: string;
         };
       }): Promise<{ success: boolean; error?: string }>;
+      getPhoneNumber(): Promise<string | null>;
+      logout(): Promise<{ success: boolean; error?: string }>;
     };
   }
 }

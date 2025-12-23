@@ -45,6 +45,32 @@ ipcMain.handle('whatsapp-get-status', async () => {
   return whatsappService?.getStatus() || 'close';
 });
 
+ipcMain.handle('whatsapp-get-phone-number', async () => {
+  return whatsappService?.getPhoneNumber() || null;
+});
+
+ipcMain.handle('whatsapp-logout', async () => {
+  if (!whatsappService) {
+    return {
+      success: false,
+      error: 'WhatsApp service is not initialized.',
+    };
+  }
+
+  try {
+    return await whatsappService.logout();
+  } catch (error) {
+    console.error('Error in whatsapp-logout handler:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred.',
+    };
+  }
+});
+
 // OpenLink IPC handlers
 ipcMain.handle('get-openlink', async () => {
   return openLink;
