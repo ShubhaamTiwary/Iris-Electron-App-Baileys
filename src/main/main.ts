@@ -29,6 +29,9 @@ let mainWindow: BrowserWindow | null = null;
 let whatsappService: WhatsAppService | null = null;
 let openLink: string | null = null;
 let hasNavigatedToOpenLink = false;
+// Cache WhatsApp connection state to avoid repeated getStatus() calls
+// Initialize as null, will be set when service is created or status updates
+let cachedWhatsAppStatus: ConnectionState | null = null;
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
@@ -320,6 +323,11 @@ function handleDeeplink(url: string) {
     if (!whatsappService) {
       console.log('Initializing WhatsApp service...');
       whatsappService = new WhatsAppService();
+
+      // Get initial status and cache it before initializing
+      const initialStatus = whatsappService.getStatus();
+      cachedWhatsAppStatus = initialStatus;
+
       whatsappService.initialize();
 
       // Forward WhatsApp events to renderer
@@ -330,30 +338,39 @@ function handleDeeplink(url: string) {
       });
 
       whatsappService.on('status-update', (status: ConnectionState) => {
+        // Update cached status immediately
+        cachedWhatsAppStatus = status;
+
         if (mainWindow) {
           mainWindow.webContents.send('whatsapp-status-update', status);
 
           // Navigate to openLink when connected (always navigate if openLink exists)
-          if (status === 'open' && openLink) {
+          const statusStr = String(status);
+          if (statusStr === 'open' && openLink) {
             console.log('Navigating to openLink:', openLink);
             mainWindow.loadURL(openLink);
             hasNavigatedToOpenLink = true;
           }
 
           // Navigate back to local QR screen when disconnected
-          if (status === 'close' && hasNavigatedToOpenLink) {
+          if (statusStr === 'close' && hasNavigatedToOpenLink) {
             hasNavigatedToOpenLink = false;
             mainWindow.loadURL(resolveHtmlPath('index.html'));
           }
         }
       });
     } else {
-      // WhatsApp service already exists - check if already connected
-      const currentStatus = whatsappService.getStatus();
-      if (currentStatus === 'open' && openLink && mainWindow) {
+      // WhatsApp service already exists - use cached status to avoid getStatus() call
+      // If cache is not set, get it from service and cache it
+      if (cachedWhatsAppStatus === null) {
+        cachedWhatsAppStatus = whatsappService.getStatus();
+      }
+
+      const statusStr = String(cachedWhatsAppStatus);
+      if (statusStr === 'open' && openLink && mainWindow) {
         // Immediately navigate to the new openLink if already connected
         console.log(
-          'WhatsApp already connected, navigating to new openLink:',
+          'WhatsApp already connected (cached), navigating to new openLink:',
           openLink,
         );
         mainWindow.loadURL(openLink);
